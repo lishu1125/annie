@@ -93,6 +93,12 @@ $ xbps-install -S annie
 $ scoop install annie
 ```
 
+### [Chocolatey](https://chocolatey.org/) on Windows
+
+```
+$ choco install annie
+```
+
 ## Getting Started
 
 Usage:
@@ -214,9 +220,16 @@ You can use the `-start`, `-end` or `-items` option to specify the download rang
 -start
     	Playlist video to start at (default 1)
 -end
-    	Playlist video to end at (default is last)
+    	Playlist video to end at
 -items
-    	Playlist video items to download. Separated by commas like: 1,5,6
+    	Playlist video items to download. Separated by commas like: 1,5,6,8-10
+```
+
+For bilibili playlists only:
+
+```
+-eto
+  File name of each bilibili episode doesn't include the playlist title
 ```
 
 ### Multiple inputs
@@ -266,6 +279,17 @@ $ annie -F ~/Desktop/u.txt
 ......
 ```
 
+You can use the `-start`, `-end` or `-items` option to specify the download range of the list:
+
+```
+-start
+    	File line to start at (default 1)
+-end
+    	File line to end at
+-items
+    	File lines to download. Separated by commas like: 1,5,6,8-10
+```
+
 ### Resume a download
 
 <kbd>Ctrl</kbd>+<kbd>C</kbd> interrupts a download.
@@ -301,22 +325,16 @@ $ annie -c cookies.txt https://www.bilibili.com/video/av20203945
 ```
 
 ### Proxy
-#### HTTP proxy
 
-An HTTP proxy can be specified with the `-x` option:
-
-```console
-$ annie -x http://127.0.0.1:7777 -i https://www.youtube.com/watch?v=Gnbch2osEeo
-```
-
-#### SOCKS5 proxy
-
-A SOCKS5 proxy can be specified with the `-s` option:
+You can set the HTTP/SOCKS5 proxy using environment variables:
 
 ```console
-$ annie -s 127.0.0.1:1080 -i https://www.youtube.com/watch?v=Gnbch2osEeo
+$ HTTP_PROXY="http://127.0.0.1:1087/" annie -i https://www.youtube.com/watch?v=Gnbch2osEeo
 ```
 
+```console
+$ HTTP_PROXY="socks5://127.0.0.1:1080/" annie -i https://www.youtube.com/watch?v=Gnbch2osEeo
+```
 
 ### Multi-Thread
 
@@ -495,15 +513,13 @@ $ annie -j https://www.bilibili.com/video/av20203945
     	Cookie
   -r string
     	Use specified Referrer
+  -cs int
+    	HTTP chunk size for downloading (in MB) (default 0)
 ```
 
 #### Network:
 
 ```
-  -s string
-    	SOCKS5 proxy
-  -x string
-    	HTTP proxy
   -retry int
     	How many times to retry when the download failed (default 10)
 ```
@@ -516,7 +532,7 @@ $ annie -j https://www.bilibili.com/video/av20203945
   -end int
     	Playlist video to end at
   -items string
-    	Playlist video items to download. Separated by commas like: 1,5,6
+    	Playlist video items to download. Separated by commas like: 1,5,6,8-10
 ```
 
 #### Filesystem:
@@ -538,16 +554,11 @@ $ annie -j https://www.bilibili.com/video/av20203945
 
 ```
   -ccode string
-    	Youku ccode (default "0103010102")
+    	Youku ccode (default "0590")
   -ckey string
     	Youku ckey (default "7B19C0AB12633B22E7FE81271162026020570708D6CC189E4924503C49D243A0DE6CD84A766832C2C99898FC5ED31F3709BB3CDD82C96492E721BDD381735026")
-```
-
-#### YouTube
-
-```
-  -ytb-stream2
-    	Use data in url_encoded_fmt_stream_map
+  -password string
+    	Youku password
 ```
 
 #### aria2:
@@ -578,6 +589,7 @@ pixivision | <https://www.pixivision.net> | | ✓ | | |
 YouTube | <https://www.youtube.com> | ✓ | | ✓ | |
 爱奇艺 | <https://www.iqiyi.com> | ✓ | | | |
 芒果TV | <https://www.mgtv.com> | ✓ | | | |
+糖豆广场舞 | <http://www.tangdou.com> | ✓ | | ✓ | |
 Tumblr | <https://www.tumblr.com> | ✓ | ✓ | | |
 Vimeo | <https://vimeo.com> | ✓ | | | |
 Facebook | <https://facebook.com> | ✓ | | | |
@@ -589,6 +601,11 @@ Twitter | <https://twitter.com> | ✓ | | | |
 腾讯视频 | <https://v.qq.com> | ✓ | | | |
 网易云音乐 | <https://music.163.com> | ✓ | | | |
 音悦台 | <https://yinyuetai.com> | ✓ | | | |
+极客时间 | <https://time.geekbang.org> | ✓ | | | |
+Pornhub | <https://pornhub.com> | ✓ | | | |
+XVIDEOS | <https://xvideos.com> | ✓ | | | |
+聯合新聞網 | <https://udn.com> | ✓ | | | |
+TikTok | <https://www.tiktok.com> | ✓ | | | |
 
 
 ## Known issues

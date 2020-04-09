@@ -13,10 +13,6 @@ var (
 	Playlist bool
 	// Refer use specified Referrer
 	Refer string
-	// Proxy HTTP proxy
-	Proxy string
-	// Socks5Proxy SOCKS5 proxy
-	Socks5Proxy string
 	// Stream select specified stream to download
 	Stream string
 	// OutputPath output file path
@@ -25,7 +21,7 @@ var (
 	OutputName string
 	// ExtractedData print extracted data
 	ExtractedData bool
-	// ChunkSize size of MB
+	// ChunkSizeMB HTTP chunk size for downloading (in MB)
 	ChunkSizeMB int
 	// UseAria2RPC Use Aria2 RPC to download
 	UseAria2RPC bool
@@ -39,22 +35,26 @@ var (
 	ThreadNumber int
 	// File URLs file path
 	File string
-	// PlaylistStart Playlist video to start at
-	PlaylistStart int
-	// PlaylistEnd Playlist video to end at
-	PlaylistEnd int
-	// PlaylistItems Playlist video items to download. Separated by commas like: 1,5,6
-	PlaylistItems string
+	// ItemStart Define the starting item of a playlist or a file input
+	ItemStart int
+	// ItemEnd Define the ending item of a playlist or a file input
+	ItemEnd int
+	// Items Define wanted items from a file or playlist. Separated by commas like: 1,5,6,8-10
+	Items string
+	// File name of each bilibili episode doesn't include the playlist title
+	EpisodeTitleOnly bool
 	// Caption download captions
 	Caption bool
 	// YoukuCcode youku ccode
 	YoukuCcode string
 	// YoukuCkey youku ckey
 	YoukuCkey string
+	// YoukuPassword youku password
+	YoukuPassword string
 	// RetryTimes how many times to retry when the download failed
 	RetryTimes int
-	// YouTubeStream2 will use data in `url_encoded_fmt_stream_map`
-	YouTubeStream2 bool
+
+	MultiThread bool
 )
 
 // FakeHeaders fake http headers

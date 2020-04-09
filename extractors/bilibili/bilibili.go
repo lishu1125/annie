@@ -9,6 +9,7 @@ import (
 
 	"github.com/iawia002/annie/config"
 	"github.com/iawia002/annie/downloader"
+	"github.com/iawia002/annie/extractors"
 	"github.com/iawia002/annie/parser"
 	"github.com/iawia002/annie/request"
 	"github.com/iawia002/annie/utils"
@@ -31,7 +32,7 @@ const referer = "https://www.bilibili.com"
 
 var utoken string
 
-func genAPI(aid, cid string, bangumi bool, quality string, seasonType string) (string, error) {
+func genAPI(aid, cid int, bangumi bool, quality string, seasonType string) (string, error) {
 	var (
 		err        error
 		baseAPIURL string
@@ -39,7 +40,7 @@ func genAPI(aid, cid string, bangumi bool, quality string, seasonType string) (s
 	)
 	if config.Cookie != "" && utoken == "" {
 		utoken, err = request.Get(
-			fmt.Sprintf("%said=%s&cid=%s", bilibiliTokenAPI, aid, cid),
+			fmt.Sprintf("%said=%d&cid=%d", bilibiliTokenAPI, aid, cid),
 			referer,
 			nil,
 		)
@@ -61,13 +62,13 @@ func genAPI(aid, cid string, bangumi bool, quality string, seasonType string) (s
 		// qn=0 flag makes the CDN address different every time
 		// quality=116(1080P 60) is the highest quality so far
 		params = fmt.Sprintf(
-			"appkey=%s&cid=%s&module=bangumi&otype=json&qn=%s&quality=%s&season_type=%s&type=",
+			"appkey=%s&cid=%d&module=bangumi&otype=json&qn=%s&quality=%s&season_type=%s&type=",
 			appKey, cid, quality, quality, seasonType,
 		)
 		baseAPIURL = bilibiliBangumiAPI
 	} else {
 		params = fmt.Sprintf(
-			"appkey=%s&cid=%s&otype=json&qn=%s&quality=%s&type=",
+			"appkey=%s&cid=%d&otype=json&qn=%s&quality=%s&type=",
 			appKey, cid, quality, quality,
 		)
 		baseAPIURL = bilibiliAPI
@@ -100,8 +101,8 @@ type bilibiliOptions struct {
 	url      string
 	html     string
 	bangumi  bool
-	aid      string
-	cid      string
+	aid      int
+	cid      int
 	page     int
 	subtitle string
 }
@@ -111,15 +112,15 @@ func extractBangumi(url, html string) ([]downloader.Data, error) {
 	var data bangumiData
 	err := json.Unmarshal([]byte(dataString), &data)
 	if err != nil {
-		return downloader.EmptyList, err
+		return nil, err
 	}
 	if !config.Playlist {
 		options := bilibiliOptions{
 			url:     url,
 			html:    html,
 			bangumi: true,
-			aid:     strconv.Itoa(data.EpInfo.Aid),
-			cid:     strconv.Itoa(data.EpInfo.Cid),
+			aid:     data.EpInfo.Aid,
+			cid:     data.EpInfo.Cid,
 		}
 		return []downloader.Data{bilibiliDownload(options)}, nil
 	}
@@ -142,8 +143,8 @@ func extractBangumi(url, html string) ([]downloader.Data, error) {
 		options := bilibiliOptions{
 			url:     fmt.Sprintf("https://www.bilibili.com/bangumi/play/ep%d", id),
 			bangumi: true,
-			aid:     strconv.Itoa(u.Aid),
-			cid:     strconv.Itoa(u.Cid),
+			aid:     u.Aid,
+			cid:     u.Cid,
 		}
 		go func(index int, options bilibiliOptions, extractedData []downloader.Data) {
 			defer wgp.Done()
@@ -173,7 +174,7 @@ func getMultiPageData(html string) (*multiPage, error) {
 func extractNormalVideo(url, html string) ([]downloader.Data, error) {
 	pageData, err := getMultiPageData(html)
 	if err != nil {
-		return downloader.EmptyList, err
+		return nil, err
 	}
 	if !config.Playlist {
 		// handle URL that has a playlist, mainly for unified titles
@@ -189,12 +190,16 @@ func extractNormalVideo(url, html string) ([]downloader.Data, error) {
 			p, _ = strconv.Atoi(pageString[1])
 		}
 
+		if len(pageData.VideoData.Pages) < p || p < 1 {
+			return nil, extractors.ErrURLParseFailed
+		}
+
 		page := pageData.VideoData.Pages[p-1]
 		options := bilibiliOptions{
 			url:  url,
 			html: html,
 			aid:  pageData.Aid,
-			cid:  strconv.Itoa(page.Cid),
+			cid:  page.Cid,
 			page: p,
 		}
 		// "part":"" or "part":"Untitled"
@@ -221,7 +226,7 @@ func extractNormalVideo(url, html string) ([]downloader.Data, error) {
 			url:      url,
 			html:     html,
 			aid:      pageData.Aid,
-			cid:      strconv.Itoa(u.Cid),
+			cid:      u.Cid,
 			subtitle: u.Part,
 			page:     u.Page,
 		}
@@ -240,7 +245,7 @@ func Extract(url string) ([]downloader.Data, error) {
 	var err error
 	html, err := request.Get(url, referer, nil)
 	if err != nil {
-		return downloader.EmptyList, err
+		return nil, err
 	}
 	if strings.Contains(url, "bangumi") {
 		// handle bangumi
@@ -323,17 +328,20 @@ func bilibiliDownload(options bilibiliOptions) downloader.Data {
 	}
 	title := parser.Title(doc)
 	if options.subtitle != "" {
-		tempTitle := fmt.Sprintf("%s %s", title, options.subtitle)
-		if len([]rune(tempTitle)) > utils.MAXLENGTH {
-			tempTitle = fmt.Sprintf("%s P%d %s", title, options.page, options.subtitle)
+		if config.EpisodeTitleOnly {
+			title = fmt.Sprintf("P%d %s", options.page, options.subtitle)
+		} else {
+			title = fmt.Sprintf("%s P%d %s", title, options.page, options.subtitle)
 		}
-		title = tempTitle
 	}
 
-	downloader.Caption(
-		fmt.Sprintf("https://comment.bilibili.com/%s.xml", options.cid),
+	err = downloader.Caption(
+		fmt.Sprintf("https://comment.bilibili.com/%d.xml", options.cid),
 		options.url, title, "xml",
 	)
+	if err != nil {
+		return downloader.EmptyData(options.url, err)
+	}
 
 	return downloader.Data{
 		Site:    "哔哩哔哩 bilibili.com",

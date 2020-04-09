@@ -47,9 +47,6 @@ type Data struct {
 	URL string `json:"url"`
 }
 
-// EmptyList empty Data list
-var EmptyList = make([]Data, 0)
-
 // EmptyData returns an "empty" Data object with the given URL and error
 func EmptyData(url string, err error) Data {
 	return Data{
@@ -140,4 +137,11 @@ type Aria2Input struct {
 	Out string `json:"out"`
 	// For a simple download, only add headers
 	Header []string `json:"header"`
+}
+
+type FilePartMeta struct {
+	Index float32
+	Start int64
+	End   int64
+	Cur   int64
 }

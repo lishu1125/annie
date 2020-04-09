@@ -4,20 +4,18 @@ import (
 	"compress/flate"
 	"compress/gzip"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net"
 	"net/http"
-	netURL "net/url"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/MercuryEngineering/CookieMonster"
+	cookiemonster "github.com/MercuryEngineering/CookieMonster"
 	"github.com/fatih/color"
 	"github.com/kr/pretty"
-	"golang.org/x/net/proxy"
 
 	"github.com/iawia002/annie/config"
 )
@@ -27,34 +25,14 @@ func Request(
 	method, url string, body io.Reader, headers map[string]string,
 ) (*http.Response, error) {
 	transport := &http.Transport{
+		Proxy:               http.ProxyFromEnvironment,
 		DisableCompression:  true,
 		TLSHandshakeTimeout: 10 * time.Second,
 		TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
 	}
-	if config.Proxy != "" {
-		var httpProxy, err = netURL.Parse(config.Proxy)
-		if err != nil {
-			return nil, err
-		}
-		transport.Proxy = http.ProxyURL(httpProxy)
-	}
-	if config.Socks5Proxy != "" {
-		dialer, err := proxy.SOCKS5(
-			"tcp",
-			config.Socks5Proxy,
-			nil,
-			&net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
-			},
-		)
-		if err != nil {
-			return nil, err
-		}
-		transport.Dial = dialer.Dial
-	}
 	client := &http.Client{
 		Transport: transport,
+		Timeout:   15 * time.Minute,
 	}
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
@@ -128,16 +106,24 @@ func Request(
 
 // Get get request
 func Get(url, refer string, headers map[string]string) (string, error) {
+	body, err := GetByte(url, refer, headers)
+	return string(body), err
+}
+
+// GetByte get request
+func GetByte(url, refer string, headers map[string]string) ([]byte, error) {
 	if headers == nil {
 		headers = map[string]string{}
 	}
 	if refer != "" {
 		headers["Referer"] = refer
 	}
-	res, err := Request("GET", url, nil, headers)
+	res, err := Request(http.MethodGet, url, nil, headers)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
+	defer res.Body.Close()
+
 	var reader io.ReadCloser
 	switch res.Header.Get("Content-Encoding") {
 	case "gzip":
@@ -147,13 +133,13 @@ func Get(url, refer string, headers map[string]string) (string, error) {
 	default:
 		reader = res.Body
 	}
-	defer res.Body.Close()
 	defer reader.Close()
+
 	body, err := ioutil.ReadAll(reader)
-	if err != nil {
-		return "", err
+	if err != nil && err != io.EOF {
+		return nil, err
 	}
-	return string(body), nil
+	return body, nil
 }
 
 // Headers return the HTTP Headers of the url
@@ -161,7 +147,7 @@ func Headers(url, refer string) (http.Header, error) {
 	headers := map[string]string{
 		"Referer": refer,
 	}
-	res, err := Request("GET", url, nil, headers)
+	res, err := Request(http.MethodGet, url, nil, headers)
 	if err != nil {
 		return nil, err
 	}
@@ -175,6 +161,9 @@ func Size(url, refer string) (int64, error) {
 		return 0, err
 	}
 	s := h.Get("Content-Length")
+	if s == "" {
+		return 0, errors.New("Content-Length is not present")
+	}
 	size, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
 		return 0, err
